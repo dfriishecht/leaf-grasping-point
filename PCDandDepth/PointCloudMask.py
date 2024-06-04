@@ -98,6 +98,7 @@ def apply_depth_mask(pointcloud_path, mask_path, depth_path, plot=True):
     pcd.points = o3d.utility.Vector3dVector(points)
 
 
+
     # # Remove final artifacts.
     # # Prefer this over a more aggressive erosion since eventually it degrades the overall leaf shape
     # cl, ind = pcd.remove_statistical_outlier(nb_neighbors=100, std_ratio=1.0)
@@ -111,3 +112,9 @@ def apply_depth_mask(pointcloud_path, mask_path, depth_path, plot=True):
 
     return masked_points
 
+
+def compute_normals(point_cloud):
+    print("Computing Normals!")
+    point_cloud.estimate_normals(
+        search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1,max_nn=30))
+    return point_cloud

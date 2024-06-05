@@ -148,6 +148,18 @@ def compute_normals(point_cloud):
 
 
 def get_kernels(depth_image, mask_image):
+    """
+    Calculate and get all of the convolution kernels needed for each leaf.
+    Masks out each leaf individually to calculate its respective kernel size.
+
+    Args:
+        depth_image (numpy array): Array of depth values for each leaf.
+        mask_image (numpy array): Array of leaf id values for each leaf.
+
+    Returns:
+        kernels (list): A list of kernel sizes indexed based on which leaf
+                to convolve them with.
+    """
     masks_ind = np.unique(mask_image)
     kernels = []
 

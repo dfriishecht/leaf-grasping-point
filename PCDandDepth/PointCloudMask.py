@@ -255,7 +255,16 @@ def kernel_size(depth_mask, plot=False):
 
 
 def do_convolution(kernel, mask):
+    """
+    Convolves each individual leaf with their respective kernel to calculate what portions
+    of the leaf can actually be grasped.
 
+    args:
+        kernel (list): List of kernels. There should be one kernel per leaf.
+    mask:
+        mask(numpy array): Array of leaf id values for each leaf. Anywhere there
+                is no leaf is 0.
+    """
     kernel_ = kernel
     mask_ = mask
     index_ = np.unique(mask_)

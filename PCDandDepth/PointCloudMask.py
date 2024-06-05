@@ -126,6 +126,20 @@ def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=Tr
 
 
 def compute_normals(point_cloud):
+    """
+    Estimates the normal vector of every point in a point cloud.
+    The resulting normal vectors will all have a magnitude of one, and their
+    coordinates saved relative to the point they correspond to. Each point
+    will be its respective normal vector's "(0,0,0)".
+
+    Agrs:
+        point_cloud (open3d point cloud object): The desired point cloud to
+                compute normals for
+
+    Returns:
+        point_cloud (open3d point cloud object): The input point cloud with
+        normal vector data now included. Can be called with point_cloud.normals
+    """
     print("Computing Normals!")
     point_cloud.estimate_normals(
         search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30)
@@ -133,7 +147,7 @@ def compute_normals(point_cloud):
     return point_cloud
 
 
-def get_kernels(depth_image, mask_image, masked_points):
+def get_kernels(depth_image, mask_image):
     masks_ind = np.unique(mask_image)
     kernels = []
 

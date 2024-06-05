@@ -122,17 +122,6 @@ def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=Tr
     points = np.delete(points, np.argwhere(points == [0, 0, 0]), axis=0)
     pcd.points = o3d.utility.Vector3dVector(points)
 
-    # # Remove final artifacts.
-    # # Prefer this over a more aggressive erosion since eventually it degrades the overall leaf shape
-    # cl, ind = pcd.remove_statistical_outlier(nb_neighbors=100, std_ratio=1.0)
-    # inlier_cloud = pcd.select_by_index(ind)
-    # outlier_cloud = pcd.select_by_index(ind, invert=True)
-    # outlier_cloud.paint_uniform_color([1, 0, 0])
-    # print(f"{len(outlier_cloud.points)} outlier points culled!")
-    # print(f"Current point count: {len(inlier_cloud.points)}")
-    # cropped_mask = np.asarray(inlier_cloud.colors)
-    # cropped_points = np.asarray(inlier_cloud.points)
-
     return masked_points
 
 

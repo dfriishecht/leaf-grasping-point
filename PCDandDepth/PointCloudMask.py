@@ -6,9 +6,34 @@ import numpy as np
 import open3d as o3d
 from matplotlib import pyplot as plt
 from PIL import Image, ImageFilter
+from scipy import signal
 
 
 def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=True):
+    """
+    Function for applying leaf mask over depth image. Expects 1080x1440 resolution.
+
+    Args:
+        pointcloud_path (string): Filepath to pointcloud with .pcd format
+
+        mask_path (string): Filepath to 1080x1440 image mask
+
+        depth_path (string): Filepath to numpy array containing data on the depth of
+                each pixel in the image
+
+        image_path (string): Filepath to the original captured 1080x1440
+                rectified camera image
+
+        plot (bool): Optional input to plot this function's result
+
+    Returns:
+        masked_points (numpy array): A 1080x1440x4 numpy array containing data about the
+                segmented plants. The first three 3rd dimension indices provide the
+                real-world x, y, and z position of each point. The final index provides
+                the leaf id that each point belongs to. If the id is 0, then the point is
+                not part of a leaf.
+    """
+
     # Load pointcloud from file and save its point position and original color as two numpy arrays
     pcd_path = pointcloud_path
     pcd_load = o3d.io.read_point_cloud(pcd_path, format="pcd")
@@ -117,3 +142,115 @@ def compute_normals(point_cloud):
         search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30)
     )
     return point_cloud
+
+
+def get_kernels(depth_image, mask_image, masked_points):
+    masks_ind = np.unique(mask_image)
+    kernels = []
+
+    for i in range(1, len(masks_ind)):
+        singular_leaf_mask = np.where(mask_image, mask_image == masks_ind[i], 0)
+        leaf_mask = singular_leaf_mask * depth_image
+        kernel_ = kernel_size(leaf_mask, plot=False)
+        kernels.append(kernel_)
+    print("all kernels: ", kernels)
+    return kernels
+
+
+def kernel_size(depth_mask, plot=False):
+    calib_projection_matrix = np.array(
+        (
+            [1722.235253, 0, 584.315697, 0],
+            [0, 1722.235253, 488.690098, 0],
+            [
+                0,
+                0,
+                1,
+                0,
+            ],
+        )
+    )
+    P = np.reshape(calib_projection_matrix, (3, 4))
+    X = np.ones((4, 1))
+
+    leaf_x = np.nonzero(depth_mask)[0]
+    leaf_y = np.nonzero(depth_mask)[1]
+    mean_depth = np.mean(depth_mask[leaf_x, leaf_y])
+
+    depth = np.array(([0, 0, mean_depth]))
+    mn_dim = 0.005
+    d1 = np.array(([-mn_dim / 2, -mn_dim / 2, mean_depth]))
+    d2 = np.array(([mn_dim / 2, -mn_dim / 2, mean_depth]))
+    d3 = np.array(([-mn_dim / 2, mn_dim / 2, mean_depth]))
+    d4 = np.array(([mn_dim / 2, mn_dim / 2, mean_depth]))
+    Dc = np.array([depth]).transpose()
+    D1 = np.array([d1]).transpose()
+    D2 = np.array([d2]).transpose()
+    D3 = np.array([d3]).transpose()
+    D4 = np.array([d4]).transpose()
+    X[0:3, :] = np.array(Dc)
+    x = np.matmul(P, X)
+    xc = x / x[-1:]
+    X[0:3, :] = np.array(D1)
+    x = np.matmul(P, X)
+    x1 = x / x[-1:]
+    X[0:3, :] = np.array(D2)
+    x = np.matmul(P, X)
+    x2 = x / x[-1:]
+    X[0:3, :] = np.array(D3)
+    x = np.matmul(P, X)
+    x3 = x / x[-1:]
+    X[0:3, :] = np.array(D4)
+    x = np.matmul(P, X)
+    x4 = x / x[-1:]
+
+    sz_1 = np.abs(np.round(x1[0]) - np.round(x2[0]))
+    sz_2 = np.abs(np.round(x1[1]) - np.round(x3[1]))
+    sz_3 = np.abs(np.round(x4[0]) - np.round(x3[0]))
+    sz_4 = np.abs(np.round(x4[1]) - np.round(x2[1]))
+
+    kernel_ = np.round(
+        np.average(([sz_1, sz_2, sz_3, sz_4]))
+    )  # this is just a length of a square
+
+    print("average kernel size: ", kernel_)
+
+    if plot:
+        plt.imshow(depth_mask)
+        plt.plot(np.round(xc[0]), np.round(xc[1]), "r.")
+        plt.plot(np.round(x1[0]), np.round(x1[1]), "r.")
+        plt.plot(np.round(x2[0]), np.round(x2[1]), "r.")
+        plt.plot(np.round(x3[0]), np.round(x3[1]), "r.")
+        plt.plot(np.round(x4[0]), np.round(x4[1]), "r.")
+        plt.show()
+    return kernel_
+
+
+def do_convolution(kernel, mask):
+
+    kernel_ = kernel
+    mask_ = mask
+    index_ = np.unique(mask_)
+
+    graspable_areas = np.zeros((1080, 1440))
+
+    for i in range(1, len(index_)):
+        mask_local_ = mask_ == index_[i]
+        mask_local_ = np.where(mask_local_, mask_local_ >= 1, 0)
+        graspable_area = signal.convolve2d(
+            mask_local_.astype("uint8"),
+            np.ones((kernel_[i - 1].astype("uint8"), kernel_[i - 1].astype("uint8"))),
+            boundary="symm",
+            mode="same",
+        )
+        graspable_area = np.where(
+            graspable_area, graspable_area < np.amax(graspable_area) * 0.9, 1
+        )  # remove blurry parts
+        graspable_area_ = np.logical_not(graspable_area).astype(int)
+        i_, j_ = np.where(graspable_area_ == np.amax(graspable_area_))
+        graspable_areas[i_, j_] = i
+    return graspable_areas
+
+
+def find_best_grasp_loc():
+    pass

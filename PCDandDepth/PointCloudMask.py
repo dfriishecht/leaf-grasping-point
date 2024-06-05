@@ -173,6 +173,19 @@ def get_kernels(depth_image, mask_image):
 
 
 def kernel_size(depth_mask, plot=False):
+    """
+    Helper function to calculate the size of each kernel. The size is
+    originally based on the physical dimensions of the microneedle array.
+    Then, the mean depth of each leaf is used to figure out how large the array is
+    relative to each leaf in the camera frame, which will scale the kernel accordingly.
+
+    args:
+        depth_mask (numpy array): The masked depth data of a single leaf.
+        plot (bool): Optional argument to plot each kernel.
+
+    returns:
+        kernel_ (int): Width and height of the calculated kernel in pixels.
+    """
     calib_projection_matrix = np.array(
         (
             [1722.235253, 0, 584.315697, 0],

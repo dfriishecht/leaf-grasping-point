@@ -11,7 +11,7 @@ from PIL import Image, ImageFilter
 
 def apply_depth_mask(pointcloud_path, mask_path, depth_path, plot=True):
     # Load pointcloud from file and save its point position and original color as two numpy arrays
-    pcd_path = "Pointclouds/demo_ (1).pcd"
+    pcd_path = "Pointclouds/demo_2.pcd"
     pcd_load = o3d.io.read_point_cloud(pcd_path, format='pcd')
     pcd_points = np.asarray(pcd_load.points)
     pcd_colors = np.asarray(pcd_load.colors)
@@ -19,7 +19,7 @@ def apply_depth_mask(pointcloud_path, mask_path, depth_path, plot=True):
     pcd_colors = np.concatenate((pcd_colors, fill), axis=0)
 
     # Load mask to be used for leaf segmentation
-    mask_image = Image.open('Images/aggrigated_masks (1).png')
+    mask_image = Image.open('Images/aggrigated_masks2.png')
     mask_array = np.asarray(mask_image)[:, :, 0:3]
 
     # Format mask array to be compatible with o3d's color array setup
@@ -40,7 +40,7 @@ def apply_depth_mask(pointcloud_path, mask_path, depth_path, plot=True):
     mask_erode = np.reshape(mask_erode, (1555200, 3))
     pcd_colors = pcd_colors * mask_erode
 
-    depth = np.load("Arrays/depth (1).npy")
+    depth = np.load("Arrays/depth2.npy")
     depth_load = o3d.io.read_point_cloud(pcd_path, format='pcd')
     depth_points = np.concatenate((np.asarray(depth_load.points), fill), axis=0)
     depth = depth_points[:,2]
@@ -68,7 +68,7 @@ def apply_depth_mask(pointcloud_path, mask_path, depth_path, plot=True):
     color_index = np.reshape(color_index, (1080, 1440, 1)).astype('uint8')
     masked_points = np.concatenate((xy_pos_masked,depth_masked,color_index), axis=2)
 
-    left_image = Image.open("Images/left_rect (1).png")
+    left_image = Image.open("Images/left_rect2.png")
     left_array = np.asarray(left_image)[:, :, 0:3]
     mask_gray_3d = np.repeat(mask_gray, 3, axis=2)
     left_array_masked = mask_gray_3d * (left_array/255)

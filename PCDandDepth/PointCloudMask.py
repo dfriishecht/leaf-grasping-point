@@ -7,6 +7,8 @@ import open3d as o3d
 from matplotlib import pyplot as plt
 from PIL import Image, ImageFilter
 from scipy import signal
+from joblib import Parallel, delayed
+from skimage import measure
 import cv2
 
 
@@ -81,14 +83,12 @@ def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=Tr
     mask_colors = np.unique(reshape_mask, axis=0)
     print(f"unique mask colors: {len(mask_colors)}")
     color_index = np.zeros(shape=(1555200, 1))
-    print(mask_erode.shape)
     i = 0
     for color in mask_colors:
         index = np.all(mask_erode == color, axis=-1)
         color_index[index] = i
         i += 1
     color_index = np.reshape(color_index, (1080, 1440, 1)).astype("uint8")
-    print(len(np.unique(np.reshape(color_index, (1555200, 1)), axis=0)))
     masked_points = np.concatenate((xy_pos_masked, depth_masked, color_index), axis=2)
 
     left_image = Image.open(image_path)
@@ -239,8 +239,6 @@ def kernel_size(depth_mask, plot=False):
         np.average(([sz_1, sz_2, sz_3, sz_4]))
     )  # this is just a length of a square
 
-    print("average kernel size: ", kernel_)
-
     if plot:
         plt.imshow(depth_mask)
         plt.plot(np.round(xc[0]), np.round(xc[1]), "r.")
@@ -318,3 +316,40 @@ def get_centroids(mask):
             centroids.append((center_x, center_y))
 
     return centroids
+
+
+def clean_mask(leafs):
+    """
+    Function for removing small clusters from image masks
+
+    args:
+        leafs (numpy array): 1080x1440x3 array with data pertaining
+                to leaves and their mask data
+
+    returns:
+        claned_mask (numpy array): 1080x1440 array with the cleaned
+            mask. Individual masks with an area of less than 200 pixels
+            are removed
+    """
+    index = np.unique(leafs[:, :, 3])
+    mask = leafs[:, :, 3]
+    coordinates = []
+    for i, _ in enumerate(index):
+        if i == 0:
+            continue
+        mask_ = mask == index[i]
+        mask_ = np.where(mask_, mask_ >= 1, 0)
+        labels = measure.label(mask_)
+        props = measure.regionprops(labels)
+        for prop in props:
+            if prop.area <= 200:
+                pixels = prop.coords
+                coordinates.append(pixels)
+        # plt.imshow(mask_)
+        # plt.show()
+    for i, coord in enumerate(coordinates):
+        coor_ = np.array(coord)
+        mask[(coor_[:, 0], coor_[:, 1])] = 0
+
+    cleaned_mask = mask
+    return cleaned_mask

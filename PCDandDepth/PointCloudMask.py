@@ -291,6 +291,18 @@ def do_convolution(kernel, mask):
 
 
 def get_centroids(mask):
+    """
+    When provided with a mask, will calculate the centroid
+    for every group of ids in the mask
+
+    Args:
+        mask (numpy array): mask, where each coordinate in the mask
+        has an id attributed to it
+
+    Returns:
+        centroids (list): A list of x,y coordinate tuples corresponding to the
+        calculated centroids
+    """
     index = np.unique(mask)
     centroids = []
 

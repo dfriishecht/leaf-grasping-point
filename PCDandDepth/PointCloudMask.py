@@ -7,6 +7,7 @@ import open3d as o3d
 from matplotlib import pyplot as plt
 from PIL import Image, ImageFilter
 from scipy import signal
+import cv2
 
 
 def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=True):
@@ -44,9 +45,9 @@ def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=Tr
     # Load mask to be used for leaf segmentation
     mask_image = Image.open(mask_path)
     mask_array = np.asarray(mask_image)[:, :, 0:3]
-
     # Format mask array to be compatible with o3d's color array setup
     reshape_mask = np.reshape(mask_array, (1555200, 3))
+    print(f"unique masks intial: {len(np.unique(reshape_mask, axis=0))}")
     mask_norm = reshape_mask / 255
     index = np.argwhere(
         mask_norm == mask_norm[0]
@@ -55,17 +56,16 @@ def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=Tr
     # Turn background portions of the mask black. This is to ensure clean image erosion.
     mask = reshape_mask.copy()
     mask[index] = [0, 0, 0]
-
+    print(f"unique black bg mask: {len(np.unique(mask, axis=0))}")
     # Erode mask to remove artifacts in pointcloud from the depth map.
     mask = np.reshape(mask, (1080, 1440, 3))
     mask_erode = Image.fromarray(mask).filter(ImageFilter.MinFilter(9))
     mask_erode = np.asarray(mask_erode)[:, :, 0:3]
-
     # Use leaf mask to remove all non-leaf portions of the pointcloud
     mask_erode = np.reshape(mask_erode, (1555200, 3))
+    print(f"unique masks erode: {len(np.unique(mask_erode, axis=0))}")
     pcd_colors = pcd_colors * mask_erode
 
-    depth = np.load(depth_path)
     depth_load = o3d.io.read_point_cloud(pcd_path, format="pcd")
     depth_points = np.concatenate((np.asarray(depth_load.points), fill), axis=0)
     depth = depth_points[:, 2]
@@ -82,15 +82,16 @@ def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=Tr
     xy_pos_masked = mask_gray * xy_pos
 
     mask_colors = np.unique(mask_erode, axis=0)
+    print(f"unique mask colors: {len(mask_colors)}")
     color_index = np.zeros(shape=(1555200, 1))
-
+    print(mask_erode.shape)
     i = 0
     for color in mask_colors:
-        index = np.argwhere(mask_erode == color)
+        index = np.all(mask_erode == color, axis=-1)
         color_index[index] = i
         i += 1
-
     color_index = np.reshape(color_index, (1080, 1440, 1)).astype("uint8")
+    print(len(np.unique(np.reshape(color_index, (1555200, 1)), axis=0)))
     masked_points = np.concatenate((xy_pos_masked, depth_masked, color_index), axis=2)
 
     left_image = Image.open(image_path)
@@ -289,5 +290,23 @@ def do_convolution(kernel, mask):
     return graspable_areas
 
 
-def find_best_grasp_loc():
-    pass
+def get_centroids(mask):
+    index = np.unique(mask)
+    centroids = []
+
+    for i, _ in enumerate(index):
+        if i == 0:
+            continue
+        mask_ = mask == index[i]
+        mask_ = np.where(mask_, mask_ >= 1, 0)
+        contour, _ = cv2.findContours(
+            mask_.astype("uint8"), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
+        )
+        MOMENT = cv2.moments(contour[0])
+        print(MOMENT["m00"])
+        if MOMENT["m00"] > 0:
+            center_x = int(MOMENT["m10"] / MOMENT["m00"])
+            center_y = int(MOMENT["m01"] / MOMENT["m00"])
+            centroids.append((center_x, center_y))
+
+    return centroids

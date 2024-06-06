@@ -47,7 +47,6 @@ def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=Tr
     mask_array = np.asarray(mask_image)[:, :, 0:3]
     # Format mask array to be compatible with o3d's color array setup
     reshape_mask = np.reshape(mask_array, (1555200, 3))
-    print(f"unique masks intial: {len(np.unique(reshape_mask, axis=0))}")
     mask_norm = reshape_mask / 255
     index = np.argwhere(
         mask_norm == mask_norm[0]
@@ -56,14 +55,12 @@ def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=Tr
     # Turn background portions of the mask black. This is to ensure clean image erosion.
     mask = reshape_mask.copy()
     mask[index] = [0, 0, 0]
-    print(f"unique black bg mask: {len(np.unique(mask, axis=0))}")
     # Erode mask to remove artifacts in pointcloud from the depth map.
     mask = np.reshape(mask, (1080, 1440, 3))
     mask_erode = Image.fromarray(mask).filter(ImageFilter.MinFilter(9))
     mask_erode = np.asarray(mask_erode)[:, :, 0:3]
     # Use leaf mask to remove all non-leaf portions of the pointcloud
     mask_erode = np.reshape(mask_erode, (1555200, 3))
-    print(f"unique masks erode: {len(np.unique(mask_erode, axis=0))}")
     pcd_colors = pcd_colors * mask_erode
 
     depth_load = o3d.io.read_point_cloud(pcd_path, format="pcd")
@@ -81,7 +78,7 @@ def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=Tr
     xy_pos = np.reshape(xy_pos, (1080, 1440, 2))
     xy_pos_masked = mask_gray * xy_pos
 
-    mask_colors = np.unique(mask_erode, axis=0)
+    mask_colors = np.unique(reshape_mask, axis=0)
     print(f"unique mask colors: {len(mask_colors)}")
     color_index = np.zeros(shape=(1555200, 1))
     print(mask_erode.shape)
@@ -315,7 +312,6 @@ def get_centroids(mask):
             mask_.astype("uint8"), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
         )
         MOMENT = cv2.moments(contour[0])
-        print(MOMENT["m00"])
         if MOMENT["m00"] > 0:
             center_x = int(MOMENT["m10"] / MOMENT["m00"])
             center_y = int(MOMENT["m01"] / MOMENT["m00"])

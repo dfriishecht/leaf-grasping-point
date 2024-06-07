@@ -84,11 +84,13 @@ def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=Tr
     mask_colors = np.unique(reshape_mask, axis=0)
     print(f"unique mask colors: {len(mask_colors)}")
     color_index = np.zeros(shape=(1555200, 1))
-    i = 0
+    i = 1
     for color in mask_colors:
         index = np.all(mask_erode == color, axis=-1)
         color_index[index] = i
+        print(i)
         i += 1
+    print(f"new mask colors: {len(np.unique(color_index))}")
     color_index = np.reshape(color_index, (1080, 1440, 1)).astype("uint8")
     masked_points = np.concatenate((xy_pos_masked, depth_masked, color_index), axis=2)
 

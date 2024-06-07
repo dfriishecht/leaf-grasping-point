@@ -203,41 +203,33 @@ def kernel_size(depth_mask, plot=False):
     leaf_y = np.nonzero(depth_mask)[1]
     mean_depth = np.mean(depth_mask[leaf_x, leaf_y])
 
-    depth = np.array(([0, 0, mean_depth]))
+    depth = np.array([0, 0, mean_depth])
     mn_dim = 0.005
-    d1 = np.array(([-mn_dim / 2, -mn_dim / 2, mean_depth]))
-    d2 = np.array(([mn_dim / 2, -mn_dim / 2, mean_depth]))
-    d3 = np.array(([-mn_dim / 2, mn_dim / 2, mean_depth]))
-    d4 = np.array(([mn_dim / 2, mn_dim / 2, mean_depth]))
-    Dc = np.array([depth]).transpose()
-    D1 = np.array([d1]).transpose()
-    D2 = np.array([d2]).transpose()
-    D3 = np.array([d3]).transpose()
-    D4 = np.array([d4]).transpose()
-    X[0:3, :] = np.array(Dc)
-    x = np.matmul(P, X)
-    xc = x / x[-1:]
-    X[0:3, :] = np.array(D1)
-    x = np.matmul(P, X)
-    x1 = x / x[-1:]
-    X[0:3, :] = np.array(D2)
-    x = np.matmul(P, X)
-    x2 = x / x[-1:]
-    X[0:3, :] = np.array(D3)
-    x = np.matmul(P, X)
-    x3 = x / x[-1:]
-    X[0:3, :] = np.array(D4)
-    x = np.matmul(P, X)
-    x4 = x / x[-1:]
+    offsets = [
+        [-mn_dim / 2, -mn_dim / 2, mean_depth],
+        [mn_dim / 2, -mn_dim / 2, mean_depth],
+        [-mn_dim / 2, mn_dim / 2, mean_depth],
+        [mn_dim / 2, mn_dim / 2, mean_depth],
+    ]
+
+    # Prepare the points
+    points = [depth] + offsets
+    transformed_points = []
+
+    for point in points:
+        X[0:3, :] = np.array([point]).transpose()
+        x = np.matmul(P, X)
+        transformed_points.append(x / x[-1:])
+
+    # Unpack the transformed points
+    xc, x1, x2, x3, x4 = transformed_points
 
     sz_1 = np.abs(np.round(x1[0]) - np.round(x2[0]))
     sz_2 = np.abs(np.round(x1[1]) - np.round(x3[1]))
     sz_3 = np.abs(np.round(x4[0]) - np.round(x3[0]))
     sz_4 = np.abs(np.round(x4[1]) - np.round(x2[1]))
 
-    kernel_ = np.round(
-        np.average(([sz_1, sz_2, sz_3, sz_4]))
-    )  # this is just a length of a square
+    kernel_ = np.round(np.average(([sz_1, sz_2, sz_3, sz_4])))
 
     if plot:
         plt.imshow(depth_mask)
@@ -247,6 +239,7 @@ def kernel_size(depth_mask, plot=False):
         plt.plot(np.round(x3[0]), np.round(x3[1]), "r.")
         plt.plot(np.round(x4[0]), np.round(x4[1]), "r.")
         plt.show()
+
     return kernel_
 
 
@@ -345,8 +338,6 @@ def clean_mask(leafs):
             if prop.area <= 200:
                 pixels = prop.coords
                 coordinates.append(pixels)
-        # plt.imshow(mask_)
-        # plt.show()
     for i, coord in enumerate(coordinates):
         coor_ = np.array(coord)
         mask[(coor_[:, 0], coor_[:, 1])] = 0

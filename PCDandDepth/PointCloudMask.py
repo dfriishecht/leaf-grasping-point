@@ -10,6 +10,7 @@ from scipy import signal
 from joblib import Parallel, delayed
 from skimage import measure
 import cv2
+from concurrent.futures import ThreadPoolExecutor
 
 
 def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=True):
@@ -344,3 +345,35 @@ def clean_mask(leafs):
 
     cleaned_mask = mask
     return cleaned_mask
+
+
+def process_area(i, index_, mask_, kernel_):
+    mask_local_ = mask_ == index_[i]
+    mask_local_ = np.where(mask_local_, mask_local_ >= 1, 0)
+    graspable_area = signal.convolve2d(
+        mask_local_.astype("uint8"),
+        np.ones((kernel_[i - 1].astype("uint8"), kernel_[i - 1].astype("uint8"))),
+        boundary="symm",
+        mode="same",
+    )
+    graspable_area = np.where(
+        graspable_area, graspable_area < np.amax(graspable_area) * 0.9, 1
+    )  # remove blurry parts
+    graspable_area_ = np.logical_not(graspable_area).astype(int)
+    i_, j_ = np.where(graspable_area_ == np.amax(graspable_area_))
+    return i_, j_, i
+
+
+def compute_graspable_areas(kernel, mask):
+    kernel_ = kernel
+    mask_ = mask
+    index_ = np.unique(mask_)
+    graspable_areas = np.zeros((1080, 1440))
+
+    results = Parallel(n_jobs=-1)(
+        delayed(process_area)(i, index_, mask_, kernel_) for i in range(1, len(index_))
+    )
+    for i_, j_, i in results:
+        graspable_areas[i_, j_] = i
+
+    return graspable_areas

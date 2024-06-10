@@ -9,8 +9,8 @@ from PIL import Image, ImageFilter
 from scipy import signal
 from joblib import Parallel, delayed
 from skimage import measure
+from paretoset import paretoset
 import cv2
-from concurrent.futures import ThreadPoolExecutor
 
 
 def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=True):

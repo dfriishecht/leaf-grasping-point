@@ -9,8 +9,9 @@ from PIL import Image, ImageFilter
 from scipy import signal
 from joblib import Parallel, delayed
 from skimage import measure
-from paretoset import paretoset
 import cv2
+import math
+from concurrent.futures import ThreadPoolExecutor
 
 
 def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=True):
@@ -84,13 +85,11 @@ def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=Tr
     mask_colors = np.unique(reshape_mask, axis=0)
     print(f"unique mask colors: {len(mask_colors)}")
     color_index = np.zeros(shape=(1555200, 1))
-    i = 1
+    i = 0
     for color in mask_colors:
         index = np.all(mask_erode == color, axis=-1)
         color_index[index] = i
-        print(i)
         i += 1
-    print(f"new mask colors: {len(np.unique(color_index))}")
     color_index = np.reshape(color_index, (1080, 1440, 1)).astype("uint8")
     masked_points = np.concatenate((xy_pos_masked, depth_masked, color_index), axis=2)
 
@@ -246,41 +245,6 @@ def kernel_size(depth_mask, plot=False):
     return kernel_
 
 
-def do_convolution(kernel, mask):
-    """
-    Convolves each individual leaf with their respective kernel to calculate what portions
-    of the leaf can actually be grasped.
-
-    args:
-        kernel (list): List of kernels. There should be one kernel per leaf.
-    mask:
-        mask(numpy array): Array of leaf id values for each leaf. Anywhere there
-                is no leaf is 0.
-    """
-    kernel_ = kernel
-    mask_ = mask
-    index_ = np.unique(mask_)
-
-    graspable_areas = np.zeros((1080, 1440))
-
-    for i in range(1, len(index_)):
-        mask_local_ = mask_ == index_[i]
-        mask_local_ = np.where(mask_local_, mask_local_ >= 1, 0)
-        graspable_area = signal.convolve2d(
-            mask_local_.astype("uint8"),
-            np.ones((kernel_[i - 1].astype("uint8"), kernel_[i - 1].astype("uint8"))),
-            boundary="symm",
-            mode="same",
-        )
-        graspable_area = np.where(
-            graspable_area, graspable_area < np.amax(graspable_area) * 0.9, 1
-        )  # remove blurry parts
-        graspable_area_ = np.logical_not(graspable_area).astype(int)
-        i_, j_ = np.where(graspable_area_ == np.amax(graspable_area_))
-        graspable_areas[i_, j_] = i
-    return graspable_areas
-
-
 def get_centroids(mask):
     """
     When provided with a mask, will calculate the centroid
@@ -297,19 +261,24 @@ def get_centroids(mask):
     index = np.unique(mask)
     centroids = []
 
-    for i, _ in enumerate(index):
-        if i == 0:
+    for idx in index:
+        if idx == 0:  # 0 is background id
             continue
-        mask_ = mask == index[i]
-        mask_ = np.where(mask_, mask_ >= 1, 0)
+
+        mask_ = mask == idx
+        # mask_ = np.where(mask_, mask_ >= 1, 0)
         contour, _ = cv2.findContours(
             mask_.astype("uint8"), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
         )
-        MOMENT = cv2.moments(contour[0])
-        if MOMENT["m00"] > 0:
-            center_x = int(MOMENT["m10"] / MOMENT["m00"])
-            center_y = int(MOMENT["m01"] / MOMENT["m00"])
-            centroids.append((center_x, center_y))
+        if contour:
+            contour_max = max(contour, key=cv2.contourArea)
+            MOMENT = cv2.moments(contour_max)
+            if MOMENT["m00"] > 0:
+                center_x = int(MOMENT["m10"] / MOMENT["m00"])
+                center_y = int(MOMENT["m01"] / MOMENT["m00"])
+                centroids.append((center_x, center_y))
+        else:
+            print("Leaf has no contour")
 
     return centroids
 
@@ -379,3 +348,25 @@ def compute_graspable_areas(kernel, mask):
         graspable_areas[i_, j_] = i
 
     return graspable_areas
+
+
+def find_number_of_points_in_radius(points, center, radius):
+    """
+    Finds the number of points in a radius.
+
+    Args:
+      points: A list of points.
+      center: The center of the circle.
+      radius: The radius of the circle.
+
+    Returns:
+      The number of points in the radius.
+    """
+    count = 0
+    for point in points:
+        if (
+            math.sqrt((point[0] - center[0]) ** 2 + (point[1] - center[1]) ** 2)
+            <= radius
+        ):
+            count += 1
+    return count

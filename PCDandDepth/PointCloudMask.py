@@ -85,7 +85,7 @@ def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=Tr
     mask_colors = np.unique(reshape_mask, axis=0)
     print(f"unique mask colors: {len(mask_colors)}")
     color_index = np.zeros(shape=(1555200, 1))
-    i = 0
+    i = 1
     for color in mask_colors:
         index = np.all(mask_erode == color, axis=-1)
         color_index[index] = i
@@ -319,6 +319,20 @@ def clean_mask(leafs):
 
 
 def process_area(i, index_, mask_, kernel_):
+    """
+    Find the graspable area of a given leaf
+
+    Args:
+        i (integer): id of leaf being processed
+        index_ (numpy array): Leaf location indices
+        mask_ (numpy array): Mask being processed
+        kernel_ (list): Kernel size based on mean leaf depth
+
+    Returns:
+        i_ (list): x coordinates for graspable regions
+        j_ (list): y coordinates for graspable regions
+        i (integer): id of leaf being processed
+    """
     mask_local_ = mask_ == index_[i]
     mask_local_ = np.where(mask_local_, mask_local_ >= 1, 0)
     graspable_area = signal.convolve2d(

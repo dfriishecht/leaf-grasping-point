@@ -12,6 +12,7 @@ from skimage import measure
 import cv2
 import math
 from concurrent.futures import ThreadPoolExecutor
+import skfmm
 
 
 def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=True):
@@ -260,16 +261,25 @@ def get_centroids(mask):
     """
     index = np.unique(mask)
     centroids = []
-
+    areas = []
     for idx in index:
         if idx == 0:  # 0 is background id
             continue
 
         mask_ = mask == idx
-        # mask_ = np.where(mask_, mask_ >= 1, 0)
+
         contour, _ = cv2.findContours(
             mask_.astype("uint8"), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
         )
+
+        mask_ = np.where(mask_, mask_ >= 1, 0)
+        labels = measure.label(mask_)
+        props = measure.regionprops(labels)
+
+        total_area = 0
+        for prop in props:
+            total_area += prop.area
+        areas.append(total_area)
         if contour:
             contour_max = max(contour, key=cv2.contourArea)
             MOMENT = cv2.moments(contour_max)
@@ -279,8 +289,9 @@ def get_centroids(mask):
                 centroids.append((center_x, center_y))
         else:
             print("Leaf has no contour")
+            mask[idx] = 0
 
-    return centroids
+    return centroids, mask, areas
 
 
 def clean_mask(leafs):

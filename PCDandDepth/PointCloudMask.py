@@ -411,6 +411,20 @@ def find_number_of_points_in_radius(points, center, radius):
 
 
 def combine_sdf(mask, leaf_regions, bins):
+    """
+    Function for combining multiple SDFs of the same dimension together. The SDFs
+    are added together and then averaged/normalized at the output.
+
+    Args:
+        mask (2D Numpy Array): Leaf mask detailing where leaves are in the camera
+            frame.
+        leaf_regions (2D Numpy Array): Leaf mask detailing viable areas on each leaf
+            to grasp.
+
+    Returns:
+        SDF (2d Numpy Array): SDF array where negative regions indicate the presence of
+            leaves and positive regions indicate no leaves.
+    """
     i_ = 0
     sum_ = 0
     SDF = np.zeros(leaf_regions.shape)

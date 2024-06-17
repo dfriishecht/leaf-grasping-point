@@ -363,6 +363,17 @@ def process_area(i, index_, mask_, kernel_):
 
 
 def compute_graspable_areas(kernel, mask):
+    """
+    Function for executing 'process_area()' in parallel
+
+    Args:
+        kernel (list): List of kernel sizes to be convolved with each leaf
+        mask (2d Numpy Array): Leaf mask with unique id per leaf
+
+    Returns:
+        graspable_areas (2d Numpy Array): A leaf mask with the area of each leaf
+            adjusted to only include their graspable area
+    """
     kernel_ = kernel
     mask_ = mask
     index_ = np.unique(mask_)

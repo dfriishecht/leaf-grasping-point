@@ -12,7 +12,9 @@ from skimage import measure
 import cv2
 import math
 from concurrent.futures import ThreadPoolExecutor
-import skfmm
+import sklearn.metrics.pairwise as pdist
+
+# import skfmm
 
 
 def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=True):
@@ -395,3 +397,41 @@ def find_number_of_points_in_radius(points, center, radius):
         ):
             count += 1
     return count
+
+
+def combine_sdf(mask, leaf_regions, bins):
+    i_ = 0
+    sum_ = 0
+    SDF = np.zeros(leaf_regions.shape)
+    counter = 0
+    for i in bins:
+        sum = sum_ + 1
+        mask_ind = np.arrange(sum_, sum)
+        mask_img = np.isin(mask, mask_ind) * leaf_regions
+        sdf = get_sdf(mask_img)
+        SDF += sdf
+        sum_ = sum
+        counter += counter
+    SDF = SDF / counter
+    SDF = (SDF - np.amin(SDF)) / (np.amax(SDF) - np.amin(SDF))
+    return SDF
+
+
+def get_sdf(mask):
+    mask_ = np.where(mask, mask == 0, 1)
+    if np.count_nonzero(mask_ == 0) == 0:
+        return np.zeros(mask_.shape)
+    sdf_ = skfmm.distance(mask_, dx=1)
+    return sdf_
+
+
+def find_maxmin_centroid_dist(centroids, min_global, max_global):
+    B = np.asarray(centroids)
+    B = np.insert(B, 0, values=(min_global[1], min_global[0]), axis=0)
+    pdist_B = np.array(pdist.euclidean_distances(B))
+    A = np.asarray(centroids)
+    A = np.insert(A, 0, values=(max_global[1], max_global[0]), axis=0)
+    pdist_A = np.array(pdist.euclidean_distances(A))
+    data = np.vstack(([pdist_B[0, :], pdist_A[0, :]])).transpose()
+    data = np.delete(data, 0, axis=0)
+    return data

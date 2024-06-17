@@ -443,6 +443,17 @@ def combine_sdf(mask, leaf_regions, bins):
 
 
 def get_sdf(mask):
+    """
+    Finds the SDF of a given leaf mask. If there are no leaves in the mask, will
+    just return an empty array instead.
+
+    Args:
+        mask (2D Numpy Array): Leaf mask detailing where leaves are in the camera
+            frame.
+
+    Returns:
+        sdf_ (2D Numpy Array): SDF for the provided mask.
+    """
     mask_ = np.where(mask, mask == 0, 1)
     if np.count_nonzero(mask_ == 0) == 0:
         return np.zeros(mask_.shape)
@@ -451,6 +462,20 @@ def get_sdf(mask):
 
 
 def find_maxmin_centroid_dist(centroids, min_global, max_global):
+    """
+    Calculates the distance of each centroid from the leaf SDF's global
+    minima and maxima
+
+    Args:
+        centroids (list): A list of x,y coordinate tuples corresponding to the
+        calculated leaf centroids
+        min_global (Numpy Array): Index of the global minimum value for the leaf SDF
+        max_global (Numpy Array): Index of the global maximum value for the leaf SDF
+
+    Returns:
+        data (2D Numpy Array): Array of distances from global minima and maxima for each
+            centroid
+    """
     B = np.asarray(centroids)
     B = np.insert(B, 0, values=(min_global[1], min_global[0]), axis=0)
     pdist_B = np.array(pdist.euclidean_distances(B))

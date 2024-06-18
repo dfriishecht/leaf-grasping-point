@@ -487,9 +487,21 @@ def find_maxmin_centroid_dist(centroids, min_global, max_global):
     return data
 
 
-def mean_mask_depth(mask, leafs, normalized=False):
+def mean_mask_depth(leafs, normalized=False):
+    """
+    Finds the mean depth for every leaf in the mask
 
-    unique = np.unique(mask)
+    Args:
+        leafs (3D Numpy Array): A Numpy array containing data about
+            plants in the image on a per-pixel basis.
+        normalized (bool): Optional input to have the functions
+            output be min-max normalized.
+
+    Returns:
+        depth_list (list): List of mean depth for each leaf in the image. Will share
+            the same index as running np.unique() on the leaf mask.
+    """
+    unique = np.unique(leafs[:, :, 3])
     depth_list = []
 
     for i in range(1, len(unique)):

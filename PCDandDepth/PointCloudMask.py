@@ -519,6 +519,16 @@ def mean_mask_depth(leafs, normalized=False):
 
 
 def find_tall_leaves(depth_list, leafs):
+    """
+    From a given list of mean depths, create a new mask with outlier leaves. These
+        are leaves who's height is greater than the median by a specified clearance for the
+        robot end-effector.
+
+    Args:
+        depth_list (list): List of mean depths for each leaf in the image
+        leafs (3D Numpy Array): Numpy array containing information about each leaf
+            on a pixel-by-pixel basis.
+    """
     GRASPER_CLEARANCE = 0.02
     unique = np.unique(leafs[:, :, 3])
     depth_hist = np.histogram(depth_list, bins="auto")

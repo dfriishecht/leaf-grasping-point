@@ -485,3 +485,22 @@ def find_maxmin_centroid_dist(centroids, min_global, max_global):
     data = np.vstack(([pdist_B[0, :], pdist_A[0, :]])).transpose()
     data = np.delete(data, 0, axis=0)
     return data
+
+
+def mean_mask_depth(mask, leafs, normalized=False):
+
+    unique = np.unique(mask)
+    depth_list = []
+
+    for i in range(1, len(unique)):
+        leaf_indv = leafs[:, :, 3] == unique[i]
+        depth_indv = leafs[:, :, 2] * leaf_indv
+        mean_depth = np.mean(depth_indv[np.nonzero(depth_indv)])
+        depth_list.append(mean_depth)
+
+    depth_list = np.asarray(depth_list)
+    if normalized:
+        depth_list_norm = depth_list - np.min(depth_list)
+        depth_list_norm /= np.max(depth_list) - np.min(depth_list)
+        return depth_list_norm
+    return depth_list

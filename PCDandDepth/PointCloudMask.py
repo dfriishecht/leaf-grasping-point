@@ -528,6 +528,9 @@ def find_tall_leaves(depth_list, leafs):
         depth_list (list): List of mean depths for each leaf in the image
         leafs (3D Numpy Array): Numpy array containing information about each leaf
             on a pixel-by-pixel basis.
+
+    Returns:
+        tall_leaves_mask (2D Numpy Array): Mask containing only tall leaves.
     """
     GRASPER_CLEARANCE = 0.02
     unique = np.unique(leafs[:, :, 3])

@@ -516,3 +516,25 @@ def mean_mask_depth(leafs, normalized=False):
         depth_list_norm /= np.max(depth_list) - np.min(depth_list)
         return depth_list_norm
     return depth_list
+
+
+def find_tall_leaves(depth_list, leafs):
+    GRASPER_CLEARANCE = 0.02
+    unique = np.unique(leafs[:, :, 3])
+    depth_hist = np.histogram(depth_list, bins="auto")
+    depth_hist_median = np.where(depth_hist[0] == np.max(depth_hist[0]))[0][0]
+    low_depth = np.where(
+        depth_list < (depth_hist[1][depth_hist_median] - GRASPER_CLEARANCE)
+    )
+    tall_leaves_idx = unique[low_depth]
+    idx_list = []
+    for i in range(1, len(tall_leaves_idx)):
+        idx_list.append(np.where(unique == tall_leaves_idx[i])[0][0])
+
+    tall_leaves_mask = np.zeros(np.shape(leafs[:, :, 3]))
+
+    for i, _ in enumerate(unique[idx_list]):
+        tall_leaves = leafs[:, :, 3] == unique[idx_list][i]
+        tall_leaves_mask += tall_leaves
+
+    return tall_leaves_mask

@@ -552,3 +552,19 @@ def find_tall_leaves(depth_list, leafs):
         tall_leaves_mask += tall_leaves
 
     return tall_leaves_mask
+
+def compute_minmax_dist(centroids, min, max):
+
+    B = np.asarray(centroids)
+    B = np.insert(B, 0, values=(min[1], min[0]), axis=0)
+
+    pdist_B = np.array(pdist.euclidean_distances(B))
+    
+    A = np.asarray(centroids)
+    A = np.insert(A, 0, values=(max[1], max[0]), axis=0)
+
+    pdist_A = np.array(pdist.euclidean_distances(A))
+
+    data = np.vstack(([pdist_B[0, :], pdist_A[0. :]])).transpose()
+    data = np.delete(data, 0, axis=0)
+    return data

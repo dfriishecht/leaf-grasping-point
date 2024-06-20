@@ -554,6 +554,19 @@ def find_tall_leaves(depth_list, leafs):
     return tall_leaves_mask
 
 def compute_minmax_dist(centroids, min, max):
+    """
+    Computes the euclidean distance of each centroid from the imange's
+    minimum and maximum SDF values.
+
+    Args:
+        centroids (List): List of tuples with the xy coords for each centroid.
+        min (tuple): xy coords of global minimum.
+        max (tuple): xy coords of global maximum
+    
+    Returns:
+        data (List): List containingn the distance from both global minima and maxima
+            per centroid.
+    """
 
     B = np.asarray(centroids)
     B = np.insert(B, 0, values=(min[1], min[0]), axis=0)

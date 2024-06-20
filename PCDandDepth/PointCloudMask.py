@@ -14,7 +14,7 @@ import math
 from concurrent.futures import ThreadPoolExecutor
 import sklearn.metrics.pairwise as pdist
 
-# import skfmm
+import skfmm
 
 
 def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=True):
@@ -355,7 +355,7 @@ def process_area(i, index_, mask_, kernel_):
         mode="same",
     )
     graspable_area = np.where(
-        graspable_area, graspable_area < np.amax(graspable_area) * 0.9, 1
+        graspable_area, graspable_area < np.amax(graspable_area) * 0.95, 1
     )  # remove blurry parts
     graspable_area_ = np.logical_not(graspable_area).astype(int)
     i_, j_ = np.where(graspable_area_ == np.amax(graspable_area_))
@@ -431,12 +431,13 @@ def combine_sdf(mask, leaf_regions, bins):
     counter = 0
     for i in bins:
         sum = sum_ + 1
-        mask_ind = np.arrange(sum_, sum)
+        mask_ind = np.arange(sum_, sum)
         mask_img = np.isin(mask, mask_ind) * leaf_regions
         sdf = get_sdf(mask_img)
         SDF += sdf
         sum_ = sum
-        counter += counter
+        counter += 1
+
     SDF = SDF / counter
     SDF = (SDF - np.amin(SDF)) / (np.amax(SDF) - np.amin(SDF))
     return SDF
@@ -551,3 +552,32 @@ def find_tall_leaves(depth_list, leafs):
         tall_leaves_mask += tall_leaves
 
     return tall_leaves_mask
+
+def compute_minmax_dist(centroids, min, max):
+    """
+    Computes the euclidean distance of each centroid from the imange's
+    minimum and maximum SDF values.
+
+    Args:
+        centroids (List): List of tuples with the xy coords for each centroid.
+        min (tuple): xy coords of global minimum.
+        max (tuple): xy coords of global maximum
+    
+    Returns:
+        data (List): List containingn the distance from both global minima and maxima
+            per centroid.
+    """
+
+    B = np.asarray(centroids)
+    B = np.insert(B, 0, values=(min[1], min[0]), axis=0)
+
+    pdist_B = np.array(pdist.euclidean_distances(B))
+    
+    A = np.asarray(centroids)
+    A = np.insert(A, 0, values=(max[1], max[0]), axis=0)
+
+    pdist_A = np.array(pdist.euclidean_distances(A))
+
+    data = np.vstack(([pdist_B[0, :], pdist_A[0. :]])).transpose()
+    data = np.delete(data, 0, axis=0)
+    return data

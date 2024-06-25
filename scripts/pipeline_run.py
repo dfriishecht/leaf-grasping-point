@@ -5,7 +5,9 @@ from paretoset import paretoset
 from PIL import Image
 from matplotlib import pyplot as plt
 
-import leaf_processing_helpers as lph
+import modules.conv_helpers as cvh
+import modules.mask_helpers as mh
+import modules.plant_pcd_helpers as pcdh
 
 pointcloud_path = "Pointclouds/demo_5.pcd"
 mask_path = "Images/aggrigated_masks5.png"
@@ -14,10 +16,10 @@ image_path = "Images/left_rect5.png"
 
 
 # Combine mask and depth data together to segment out leaves
-leafs = lph.apply_depth_mask(
+leafs = pcdh.apply_depth_mask(
     pointcloud_path, mask_path, depth_path, image_path, plot=False
 )
-mask = lph.clean_mask(leafs)
+mask = pcdh.clean_mask(leafs)
 leafs[:, :, 3] = mask
 ############################################################
 
@@ -25,8 +27,8 @@ leafs[:, :, 3] = mask
 # Convolve each leaf with microneedle array-scaled kernels to get graspable area
 depth_image = leafs[:, :, 2].astype("float32")
 mask_image = leafs[:, :, 3].astype("uint8")
-kernels = lph.get_kernels(depth_image, mask_image)
-graspable_mask = lph.compute_graspable_areas(kernels, mask_image)
+kernels = cvh.get_kernels(depth_image, mask_image)
+graspable_mask = cvh.compute_graspable_areas(kernels, mask_image)
 ############################################################
 
 
@@ -39,7 +41,7 @@ inverse_index = np.nonzero(leafs_[:, 2])
 leafs_ = np.delete(leafs_, index, 0)
 processed_pcd = o3d.geometry.PointCloud()
 processed_pcd.points = o3d.utility.Vector3dVector(leafs_)
-lph.compute_normals(processed_pcd)
+pcdh.compute_normals(processed_pcd)
 sqrt_dist = np.sum((processed_pcd.normals[999]) ** 2, axis=0)
 dist = np.sqrt(sqrt_dist)
 normal_orientation = abs(np.asarray(processed_pcd.normals)[:, 2])
@@ -64,7 +66,7 @@ leafs = np.concatenate((leafs, leaf_flatness), axis=2)
 
 
 # Combine graspable area with flat area to determine optimal leaf grapsing locations
-ALPHA = 0.4 # Adjustable parameter to change blend between grasping area and flat area
+ALPHA = 0.4  # Adjustable parameter to change blend between grasping area and flat area
 smooth_section = leafs[:, :, 4]
 leaf_selection_a = ALPHA * smooth_section + (1 - ALPHA) * binary_graspable_mask
 
@@ -72,22 +74,22 @@ leaf_selection_ab = np.where(
     leaf_selection_a, leaf_selection_a >= np.amax(leaf_selection_a) * 0.95, 0
 )
 leafs[:, :, 3] *= leaf_selection_ab
-viable_leaf_regions = lph.clean_mask(leafs)
+viable_leaf_regions = mh.clean_mask(leafs)
 ###############################################################
 
-# Calcualte the mean depth of each leaf and identify tall leaves
-depth_list = lph.mean_mask_depth(leafs)
-depth_list_norm = lph.mean_mask_depth(leafs, normalized=True)
-tall_leaves = lph.find_tall_leaves(depth_list, leafs)
+# Calculate the mean depth of each leaf and identify tall leaves
+depth_list = mh.mean_mask_depth(leafs)
+depth_list_norm = mh.mean_mask_depth(leafs, normalized=True)
+tall_leaves = mh.find_tall_leaves(depth_list, leafs)
 tall_presence = False
 if sum(sum(tall_leaves)) > 0:
     tall_presence = True
 ###############################################################
 
 
-# Find the SDF of the leaves to calculate global clutter minima and maximas
-leafs[:,:,3] = viable_leaf_regions
-viable_leaf_regions = lph.clean_mask(leafs)
+# Find the SDF of the leaves to calculate global clutter minima and maxima
+leafs[:, :, 3] = viable_leaf_regions
+viable_leaf_regions = mh.clean_mask(leafs)
 cleaned_masks = viable_leaf_regions >= 1
 cleaned_masks = np.where(cleaned_masks, cleaned_masks == 0, 1)
 SDF = skfmm.distance(cleaned_masks, dx=1)
@@ -104,19 +106,21 @@ max_global = np.unravel_index(SDF.argmax(), SDF.shape)
 
 
 # Find the centroid of each leaf
-centroids, mask, areas = lph.get_centroids(viable_leaf_regions.astype('uint8'))
-leafs[:,:,3] = mask
+centroids, mask, areas = mh.get_centroids(viable_leaf_regions.astype("uint8"))
+leafs[:, :, 3] = mask
 
 if tall_presence:
     tall_leaves = tall_leaves * viable_leaf_regions
-    centroids_tall, mask_tall, areas_tall = lph.get_centroids(tall_leaves.astype('uint8'))
+    centroids_tall, mask_tall, areas_tall = mh.get_centroids(
+        tall_leaves.astype("uint8")
+    )
 #################################################################
 
 
 # Find the distance of each centroid from the image's SDFminima and maxima
-data = lph.compute_minmax_dist(centroids, min_global, max_global)
+data = mh.compute_minmax_dist(centroids, min_global, max_global)
 if tall_presence:
-    data_tall = lph.compute_minmax_dist(centroids_tall, min_tall, max_tall)
+    data_tall = mh.compute_minmax_dist(centroids_tall, min_tall, max_tall)
 #################################################################
 
 
@@ -124,22 +128,22 @@ if tall_presence:
 mask = paretoset(data)
 paretoset_sols = data[mask]
 res = mask
-opt_leaves = np.where(res==True)[0]
+opt_leaves = np.where(res == True)[0]
 
 if tall_presence:
     mask_tall = paretoset(data_tall)
     paretoset_sols_tall = data_tall[mask_tall]
     res_tall = mask_tall
-    opt_leaves_tall = np.where(res_tall==True)[0]
+    opt_leaves_tall = np.where(res_tall == True)[0]
 ################################################################
 
 
 # Visualize the selected centroids
 plt.imshow(Image.open(image_path))
 for i in opt_leaves:
-    plt.plot(centroids[i][0], centroids[i][1], 'r*')
+    plt.plot(centroids[i][0], centroids[i][1], "r*")
 if tall_presence:
     for i in opt_leaves_tall:
-        plt.plot(centroids_tall[i][0], centroids_tall[i][1], 'b*')
+        plt.plot(centroids_tall[i][0], centroids_tall[i][1], "b*")
 plt.show()
 ###############################################################

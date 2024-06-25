@@ -14,7 +14,7 @@ import math
 from concurrent.futures import ThreadPoolExecutor
 import sklearn.metrics.pairwise as pdist
 
-import skfmm
+# import skfmm
 
 
 def apply_depth_mask(pointcloud_path, mask_path, depth_path, image_path, plot=True):
@@ -553,6 +553,7 @@ def find_tall_leaves(depth_list, leafs):
 
     return tall_leaves_mask
 
+
 def compute_minmax_dist(centroids, min, max):
     """
     Computes the euclidean distance of each centroid from the imange's
@@ -562,7 +563,7 @@ def compute_minmax_dist(centroids, min, max):
         centroids (List): List of tuples with the xy coords for each centroid.
         min (tuple): xy coords of global minimum.
         max (tuple): xy coords of global maximum
-    
+
     Returns:
         data (List): List containingn the distance from both global minima and maxima
             per centroid.
@@ -572,7 +573,7 @@ def compute_minmax_dist(centroids, min, max):
     B = np.insert(B, 0, values=(min[1], min[0]), axis=0)
 
     pdist_B = np.array(pdist.euclidean_distances(B))
-    
+
     A = np.asarray(centroids)
     A = np.insert(A, 0, values=(max[1], max[0]), axis=0)
 

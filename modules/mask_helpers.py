@@ -11,8 +11,7 @@ from joblib import Parallel, delayed
 from skimage import measure
 import cv2
 import math
-
-# import skfmm
+import skfmm
 from concurrent.futures import ThreadPoolExecutor
 import sklearn.metrics.pairwise as pdist
 

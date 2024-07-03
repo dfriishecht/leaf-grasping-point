@@ -9,14 +9,14 @@ import modules.conv_helpers as cvh
 import modules.mask_helpers as mh
 import modules.plant_pcd_helpers as pcdh
 
-pointcloud_path = "Pointclouds/demo_5.pcd"
-mask_path = "Images/aggrigated_masks5.png"
-image_path = "Images/left_rect5.png"
+pointcloud_path = "data/pointclouds/demo_5.pcd"
+mask_path = "data/images/aggrigated_masks5.png"
+image_path = "data/images/left_rect5.png"
 
 
 # Combine mask and depth data together to segment out leaves
 leafs = pcdh.apply_depth_mask(pointcloud_path, mask_path, image_path, plot=False)
-mask = pcdh.clean_mask(leafs)
+mask = mh.clean_mask(leafs)
 leafs[:, :, 3] = mask
 ############################################################
 

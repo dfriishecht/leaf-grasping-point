@@ -10,7 +10,7 @@ This package implements an optimal leaf grasping location pipeline. This is done
 * The centroid of each viable grasping area is calculated.
 * The global "leaf clutter" minima and maxima are calculated, and leaves within the paretoset are selected as candidate leaves.
 * The same process is done for leaves at the top of the plants.
-* A final leaf is chosen as the optimal leaf, and an approach vector to the leaf is calculated. <- TODO
+* TODO: A final leaf is chosen as the optimal leaf, and an approach vector to the leaf is calculated.
 
 ## 2. Installation
 Tested on Ubuntu 20.04.06

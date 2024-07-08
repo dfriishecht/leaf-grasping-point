@@ -1,5 +1,6 @@
 import skfmm
 import click
+import time
 import numpy as np
 import open3d as o3d
 from paretoset import paretoset
@@ -12,14 +13,13 @@ import modules.plant_pcd_helpers as pcdh
 
 
 @click.command()
-@click.option('--pcd_path', type=str, default='demo_5.pcd', help='Path to point cloud to be processed')
-@click.option('--mask_path', type=str, default='aggrigated_masks5.png', help='Path to mask image to be processed')
-@click.option('--image_path', type=str, default='left_rect5.png', help='plant image for visualiztion')
-def main(pcd_path, mask_path, image_path):
+@click.option('--data_num', type=str, default='5', help='Index of data to be processed')
+def main(data_num):
+    tot_t = time.time()
     # Combine mask and depth data together to segment out leaves
-    pcd_path = "data/pointclouds/"+pcd_path
-    mask_path = "data/images/"+mask_path
-    image_path = "data/images/"+image_path
+    pcd_path = "data/pointclouds/demo_"+data_num+".pcd"
+    mask_path = "data/images/aggrigated_masks"+data_num+".png"
+    image_path = "data/images/left_rect"+data_num+".png"
     leafs = pcdh.apply_depth_mask(pcd_path, mask_path, image_path, plot=False)
     mask = mh.clean_mask(leafs)
     leafs[:, :, 3] = mask
@@ -27,10 +27,13 @@ def main(pcd_path, mask_path, image_path):
 
 
     # Convolve each leaf with microneedle array-scaled kernels to get graspable area
+    print("Computing Graspable Area")
+    t = time.time()
     depth_image = leafs[:, :, 2].astype("float32")
     mask_image = leafs[:, :, 3].astype("uint8")
     kernels = cvh.get_kernels(depth_image, mask_image)
     graspable_mask = cvh.compute_graspable_areas(kernels, mask_image)
+    print(f"Computation took {time.time()-t:.3f} s")
     ############################################################
 
 
@@ -139,6 +142,7 @@ def main(pcd_path, mask_path, image_path):
         opt_leaves_tall = np.where(res_tall == True)[0]
     ################################################################
 
+    print(f"Total runtime: {time.time()-tot_t:.3f} s")
 
     # Visualize the selected centroids
     plt.imshow(Image.open(image_path))

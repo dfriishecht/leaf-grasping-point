@@ -14,7 +14,8 @@ import modules.plant_pcd_helpers as pcdh
 
 @click.command()
 @click.option('--data_num', type=str, default='5', help='Index of data to be processed')
-def main(data_num):
+@click.option('--viz', type=bool, default=False, help="Toggle for visualizing script outputs")
+def main(data_num, viz):
     tot_t = time.time()
     # Combine mask and depth data together to segment out leaves
     pcd_path = "data/pointclouds/demo_"+data_num+".pcd"
@@ -144,15 +145,22 @@ def main(data_num):
 
     print(f"Total runtime: {time.time()-tot_t:.3f} s")
 
-    # Visualize the selected centroids
-    plt.imshow(Image.open(image_path))
-    for i in opt_leaves:
-        plt.plot(centroids[i][0], centroids[i][1], "r*")
-    if tall_presence:
-        for i in opt_leaves_tall:
-            plt.plot(centroids_tall[i][0], centroids_tall[i][1], "b*")
-    plt.show()
-    ###############################################################
+    if viz:
+        fig, ax = plt.subplot_mosaic([
+                ['viable regions', 'sdf', 'points']
+            ], figsize=(15,10))
+        ax['points'].imshow(Image.open(image_path))
+        for i in opt_leaves:
+            ax['points'].plot(centroids[i][0], centroids[i][1], "r*")
+        if tall_presence:
+            for i in opt_leaves_tall:
+                ax["points"].plot(centroids_tall[i][0], centroids_tall[i][1], "b*")
+        ax["points"].set_title("Selected Points")
+        ax["viable regions"].imshow(viable_leaf_regions)
+        ax["viable regions"].set_title(f"Viable Leaf Regions (blend: {ALPHA})")
+        ax["sdf"].imshow(SDF)
+        ax["sdf"].set_title("SDF")
+        plt.show()
 
 if __name__ == "__main__":
     main()

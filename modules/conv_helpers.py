@@ -3,18 +3,9 @@ Helper module for performing various convolution-focused tasks.
 """
 
 import numpy as np
-import open3d as o3d
 from matplotlib import pyplot as plt
-from PIL import Image, ImageFilter
 from scipy import signal
 from joblib import Parallel, delayed
-from skimage import measure
-import cv2
-import math
-
-import skfmm
-from concurrent.futures import ThreadPoolExecutor
-import sklearn.metrics.pairwise as pdist
 
 
 def get_kernels(depth_image, mask_image):

@@ -1,11 +1,11 @@
-name: leaf_proccessing
+name: leaf_processing
 channels:
   - conda-forge
   - defaults
 dependencies:
   - pip
   - python=3.11.9
-  - scikit-fmm=2024.5.29=py311hcf9f919_1
+  - scikit-fmm
   - pip:
       - numpy
       - joblib==1.4.2

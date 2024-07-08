@@ -21,7 +21,7 @@ conda env create -f conda_environment.yml
 ```
 
 ```bash
-conda activate leaf_proccessing
+conda activate leaf_processing
 ```
 
 ## 3. Running the Pipeline

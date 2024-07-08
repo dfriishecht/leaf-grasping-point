@@ -13,16 +13,26 @@ This package implements an optimal leaf grasping location pipeline. This is done
 * A final leaf is chosen as the optimal leaf, and an approach vector to the leaf is calculated. <- TODO
 
 ## 2. Installation
-Tested on Windows 10 <- TODO: Test on Ubuntu 20.04
+Tested on Ubuntu 20.04.06
 
-Install with Conda
+Install Conda env
 ```bash
 conda env create -f conda_environment.yml
 ```
-
+Activate Conda env
 ```bash
 conda activate leaf_processing
 ```
 
 ## 3. Running the Pipeline
-For now, open `pipeline_run.py` in a python interpreter and run. You can adjust the input data used at the top of the script. Soon I'll have this setup properly as a package, at which point you can just run the file in terminal with `python pipeline_run.py`.
+Run the script in terminal with `python pipeline_run.py`. Currently there are five different sets of data to choose from. Specify which one with the optional `--data_num` argument.
+
+```bash
+python pipeline_run.py
+```
+```bash
+Usage: pipeline_run.py [OPTIONS]
+
+Options:
+    --data_num   INTEGER    Index of data to be processed (Range 1-5)
+    --viz        BOOL       Visualize the selected leaf points

@@ -35,4 +35,4 @@ Usage: pipeline_run.py [OPTIONS]
 
 Options:
     --data_num   INTEGER    Index of data to be processed (Range 1-5)
-    --viz        BOOL       Visualize the selected leaf points
+    --viz        BOOL       Toggle for visualizing script outputs

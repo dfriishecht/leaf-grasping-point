@@ -28,7 +28,7 @@ def get_kernels(depth_image, mask_image):
         singular_leaf_mask = np.where(mask_image, mask_image == masks_ind[i], 0)
         leaf_mask = singular_leaf_mask * depth_image
         kernel_ = kernel_size(leaf_mask, plot=False)
-        kernels.append(kernel_)
+        kernels.append(kernel_.astype("uint8"))
     print("all kernels: ", kernels)
     return kernels
 

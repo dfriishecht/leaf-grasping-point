@@ -32,11 +32,12 @@ python pipeline_run.py
 ```
 ```bash
 Usage: pipeline_run.py [OPTIONS]
-```
+
 
 Options:
     --data_num   INTEGER    Index of data to be processed (Range 1-5)
     --viz        BOOL       Toggle for visualizing script outputs
+```
 
 ## 4. Note on the Jupyter notebook `pipeline_prototyping.ipynb`
 There also exists a Jupyter notebook within this repo that is less organized than just running `pipeline_run.py`. However, it does contain more visualizations at points within the notebook, so if you wish to take a more granular look at somethhing within the code, the notebook would be a good place to explore.

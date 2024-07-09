@@ -32,6 +32,7 @@ python pipeline_run.py
 ```
 ```bash
 Usage: pipeline_run.py [OPTIONS]
+```
 
 Options:
     --data_num   INTEGER    Index of data to be processed (Range 1-5)

@@ -1,4 +1,4 @@
-# image-processing-exploration
+# Find the Optimal Leaf Grapsing Point
 
 ## 1. Overview
 This package implements an optimal leaf grasping location pipeline. This is done as follows:

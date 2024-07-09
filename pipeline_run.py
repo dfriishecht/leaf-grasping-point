@@ -141,10 +141,11 @@ def main(data_num, viz):
         paretoset_sols_tall = data_tall[mask_tall]
         res_tall = mask_tall
         opt_leaves_tall = np.where(res_tall == True)[0]
-    ################################################################
+    #################################################################
 
     print(f"Total runtime: {time.time()-tot_t:.3f} s")
 
+    # Optional toggle for visualizing processed leaves
     if viz:
         fig, ax = plt.subplot_mosaic([
                 ['viable regions', 'sdf', 'points']
@@ -155,7 +156,8 @@ def main(data_num, viz):
         if tall_presence:
             for i in opt_leaves_tall:
                 ax["points"].plot(centroids_tall[i][0], centroids_tall[i][1], "b*")
-        ax["points"].set_title("Selected Points")
+
+        ax["points"].set_title("Selected Points (Blue = Tall Outliers)")
         ax["viable regions"].imshow(viable_leaf_regions)
         ax["viable regions"].set_title(f"Viable Leaf Regions (blend: {ALPHA})")
         ax["sdf"].imshow(SDF)

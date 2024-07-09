@@ -8,12 +8,12 @@ dependencies:
   - scikit-fmm
   - pip:
       - numpy
-      - joblib==1.4.2
-      - matplotlib==3.9.0
-      - open3d==0.18.0
-      - opencv-python==4.10.0.84
-      - paretoset==1.2.3
-      - pillow==10.4.0
-      - scikit-image==0.24.0
-      - scikit-learn==1.5.1
-      - scipy==1.14.0
+      - joblib
+      - matplotlib
+      - open3d
+      - opencv-python
+      - paretoset
+      - pillow
+      - scikit-image
+      - scikit-learn
+      - scipy

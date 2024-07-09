@@ -17,7 +17,7 @@ Tested on Ubuntu 20.04.06
 
 Install Conda env
 ```bash
-conda env create -f conda_environment.yml
+conda env create -f conda_environment.yaml
 ```
 Activate Conda env
 ```bash

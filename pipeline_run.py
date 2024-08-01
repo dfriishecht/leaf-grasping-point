@@ -1,11 +1,14 @@
 import skfmm
 import click
 import time
+import os, os.path
 import numpy as np
 import open3d as o3d
 from paretoset import paretoset
 from PIL import Image
 from matplotlib import pyplot as plt
+HOME_DIR = os.path.expanduser('~')
+
 
 import modules.conv_helpers as cvh
 import modules.mask_helpers as mh
@@ -13,14 +16,15 @@ import modules.plant_pcd_helpers as pcdh
 
 
 @click.command()
-@click.option('--data_num', type=str, default='5', help='Index of data to be processed')
+@click.option('--data_num', type=int, default='5', help='Index of data to be processed')
 @click.option('--viz', type=bool, default=False, help="Toggle for visualizing script outputs")
-def main(data_num, viz):
+@click.option('--output_dir', type=str, default='data_output', help='Directory to save data')
+def main(data_num: str, viz, output_dir):
     tot_t = time.time()
     # Combine mask and depth data together to segment out leaves
-    pcd_path = "data/pointclouds/demo_"+data_num+".pcd"
-    mask_path = "data/images/aggrigated_masks"+data_num+".png"
-    image_path = "data/images/left_rect"+data_num+".png"
+    pcd_path = "data/pointclouds/"+f"{data_num}"+".pcd"
+    mask_path = "data/images/aggrigated_masks"+f"{data_num}"+".png"
+    image_path = "data/images/left_rect"+f"{data_num}"+".png"
     leafs = pcdh.apply_depth_mask(pcd_path, mask_path, image_path, plot=False)
     mask = mh.clean_mask(leafs)
     leafs[:, :, 3] = mask
@@ -47,6 +51,8 @@ def main(data_num, viz):
     leafs_ = np.delete(leafs_, index, 0)
     processed_pcd = o3d.geometry.PointCloud()
     processed_pcd.points = o3d.utility.Vector3dVector(leafs_)
+    cl, id = processed_pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
+    o3d.io.write_point_cloud(f"{HOME_DIR}/{output_dir}/cleaned{data_num}.pcd", cl, format='auto')
     pcdh.compute_normals(processed_pcd)
     sqrt_dist = np.sum((processed_pcd.normals[999]) ** 2, axis=0)
     dist = np.sqrt(sqrt_dist)
@@ -143,26 +149,64 @@ def main(data_num, viz):
         opt_leaves_tall = np.where(res_tall == True)[0]
     #################################################################
 
+
+    max_leaf = 20000
+    for idx, sol in enumerate(paretoset_sols):
+        if sol[1] < max_leaf:
+            max_leaf = idx
+
+    selected_point = centroids[opt_leaves[max_leaf]]
+    print(selected_point)
+
+    x = leafs[:, :, 0]
+    #plt.imshow(np.reshape(depth_points[:, 0], (1080, 1440, 1)))
+    #x = np.reshape(x, (1080, 1440, 1))
+    y = leafs[:, :, 1]
+    #y = np.reshape(y, (1080, 1440, 1))
+    z = leafs[:, :, 2]
+    #z = np.reshape(z, (1080, 1440, 1))
+
+    real_grasp_coord = [np.round(x[selected_point[1],selected_point[0]], 4),
+                        np.round(y[selected_point[1],selected_point[0]], 4),
+                        np.round(z[selected_point[1],selected_point[0]], 4)]
+    
+
+    print(f"Grasping Point is {real_grasp_coord}")
+
+
     print(f"Total runtime: {time.time()-tot_t:.3f} s")
 
     # Optional toggle for visualizing processed leaves
+    fig, ax = plt.subplot_mosaic([
+            ['viable regions', 'sdf', 'points']
+        ], figsize=(15,10))
+    ax['points'].imshow(Image.open(image_path))
+    for i in opt_leaves:
+        ax['points'].plot(centroids[i][0], centroids[i][1], "r*")
+    if tall_presence:
+        for i in opt_leaves_tall:
+            ax["points"].plot(centroids_tall[i][0], centroids_tall[i][1], "b*")
+    ax["points"].plot(selected_point[0],selected_point[1], "bo", markersize=8)
+    ax["points"].plot(selected_point[0],selected_point[1], "r+", markersize=8)
+    ax["points"].set_title("Selected Points (Blue = Tall Outliers)")
+    ax["viable regions"].imshow(viable_leaf_regions)
+    ax["viable regions"].set_title(f"Viable Leaf Regions (blend: {ALPHA})")
+    ax["sdf"].imshow(SDF)
+    ax["sdf"].set_title("SDF")
+    fig.savefig(f"{HOME_DIR}/{output_dir}/viz{data_num}.png")
     if viz:
-        fig, ax = plt.subplot_mosaic([
-                ['viable regions', 'sdf', 'points']
-            ], figsize=(15,10))
-        ax['points'].imshow(Image.open(image_path))
-        for i in opt_leaves:
-            ax['points'].plot(centroids[i][0], centroids[i][1], "r*")
-        if tall_presence:
-            for i in opt_leaves_tall:
-                ax["points"].plot(centroids_tall[i][0], centroids_tall[i][1], "b*")
-
-        ax["points"].set_title("Selected Points (Blue = Tall Outliers)")
-        ax["viable regions"].imshow(viable_leaf_regions)
-        ax["viable regions"].set_title(f"Viable Leaf Regions (blend: {ALPHA})")
-        ax["sdf"].imshow(SDF)
-        ax["sdf"].set_title("SDF")
         plt.show()
+
+
+
+    #TODO: Select single leaf from selection of leaves
+        # Option 1: Choose leaf point with the greatest maxima -> Done
+        # Option 2: Evaluate this maxima as a score alongside height of the point
+
+   
+
+    # 
+    #TODO: Create approach vector for the selected grasping point 
 
 if __name__ == "__main__":
     main()

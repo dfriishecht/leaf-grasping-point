@@ -7,6 +7,7 @@ import open3d as o3d
 from paretoset import paretoset
 from PIL import Image
 from matplotlib import pyplot as plt
+import matplotlib.lines as lines
 HOME_DIR = os.path.expanduser('~')
 
 
@@ -25,7 +26,7 @@ def main(data_num: str, viz, output_dir):
     pcd_path = "data/pointclouds/"+f"{data_num}"+".pcd"
     mask_path = "data/images/aggrigated_masks"+f"{data_num}"+".png"
     image_path = "data/images/left_rect"+f"{data_num}"+".png"
-    leafs = pcdh.apply_depth_mask(pcd_path, mask_path, image_path, plot=False)
+    leafs, depth = pcdh.apply_depth_mask(pcd_path, mask_path, image_path, plot=False)
     mask = mh.clean_mask(leafs)
     leafs[:, :, 3] = mask
     ############################################################
@@ -57,6 +58,12 @@ def main(data_num: str, viz, output_dir):
     sqrt_dist = np.sum((processed_pcd.normals[999]) ** 2, axis=0)
     dist = np.sqrt(sqrt_dist)
     normal_orientation = abs(np.asarray(processed_pcd.normals)[:, 2])
+
+    normal_corrected = np.asarray(processed_pcd.normals)
+    for normal in normal_corrected:
+        if normal[2] < 0:
+            normal *= -1
+    print(normal_corrected.shape)
     orientation_color = np.zeros((len(normal_orientation), 3))
     orientation_color[:, 0] = normal_orientation
     orientation_color[:, 1:] = 0
@@ -66,13 +73,16 @@ def main(data_num: str, viz, output_dir):
 
     # Estimate leaf flatness based on normal vectors
     leaf_flatness = np.zeros((1555200, 1))
+    leaf_normals = np.zeros((1555200, 3))
     j = 0
     for i, _ in enumerate(inverse_index[0]):
         current_index = inverse_index[0][i]
         leaf_flatness[current_index, 0] = normal_orientation[j]
+        leaf_normals[current_index, :] = normal_corrected[j, :]
         j += 1
 
     leaf_flatness = np.reshape(leaf_flatness, (1080, 1440, 1))
+    leaf_normals = np.reshape(leaf_normals, (1080, 1440, 3))
     leafs = np.concatenate((leafs, leaf_flatness), axis=2)
     #############################################################
 
@@ -155,24 +165,42 @@ def main(data_num: str, viz, output_dir):
         if sol[1] < max_leaf:
             max_leaf = idx
 
-    selected_point = centroids[opt_leaves[max_leaf]]
-    print(selected_point)
+    opt_point = centroids[opt_leaves[max_leaf]]
 
-    x = leafs[:, :, 0]
-    #plt.imshow(np.reshape(depth_points[:, 0], (1080, 1440, 1)))
-    #x = np.reshape(x, (1080, 1440, 1))
-    y = leafs[:, :, 1]
-    #y = np.reshape(y, (1080, 1440, 1))
-    z = leafs[:, :, 2]
-    #z = np.reshape(z, (1080, 1440, 1))
-
-    real_grasp_coord = [np.round(x[selected_point[1],selected_point[0]], 4),
-                        np.round(y[selected_point[1],selected_point[0]], 4),
-                        np.round(z[selected_point[1],selected_point[0]], 4)]
+    real_grasp_coord = leafs[opt_point[1], opt_point[0], 0:3]
+    real_grasp_coord = np.round(real_grasp_coord, 4)
+    grasp_normal = np.round(leaf_normals[opt_point[1], opt_point[0], :], 4)
     
+    SDF_max = np.unravel_index(SDF.argmax(), SDF.shape)
 
-    print(f"Grasping Point is {real_grasp_coord}")
+    print(SDF_max)
+    print(opt_point)
+    x_dist = SDF_max[1] - opt_point[0]
+    y_dist = SDF_max[0] - opt_point[1]
 
+    tot_dist = np.sqrt((x_dist**2)+(y_dist**2))
+
+    x_dist /= tot_dist * .005
+    y_dist /= tot_dist * .005
+    target_vec = (int(x_dist+opt_point[0]), int(y_dist+opt_point[1]))
+    print(target_vec)
+
+    depth = np.reshape(depth, (1080, 1440, 3))
+    real_target_vec = depth[target_vec[1], target_vec[0], :]
+    real_target_vec[2] = real_grasp_coord[2]
+    real_target_vec = np.round(real_target_vec, 4)
+    
+    print(f"Normal Vector: {grasp_normal} \n Grasp Point: {real_grasp_coord} \n Approach: {real_target_vec}")
+    # coord_test = np.asarray(processed_pcd.points)
+    # coord_test = np.zeros((100, 3))
+    # np.append(coord_test, grasp_normal)
+    # np.append(coord_test, real_target_vec)
+    # np.append(coord_test, real_grasp_coord)
+    # coord_test = real_grasp_coord
+    # pcd = o3d.geometry.PointCloud()
+    # pcd.points = o3d.utility.Vector3dVector(coord_test)
+    # o3d.visualization.draw_geometries([pcd])
+    
 
     print(f"Total runtime: {time.time()-tot_t:.3f} s")
 
@@ -181,13 +209,17 @@ def main(data_num: str, viz, output_dir):
             ['viable regions', 'sdf', 'points']
         ], figsize=(15,10))
     ax['points'].imshow(Image.open(image_path))
-    for i in opt_leaves:
+    x1, y1 = [opt_point[0], opt_point[1]]
+    x2, y2 = [SDF_max[1], SDF_max[0]]
+    ax["points"].axline((x1, y1), (x2, y2), marker='o')
+    ax["points"].plot(target_vec[0], target_vec[1], marker='*', markersize=12)
+    for i in opt_leaves:    
         ax['points'].plot(centroids[i][0], centroids[i][1], "r*")
     if tall_presence:
         for i in opt_leaves_tall:
             ax["points"].plot(centroids_tall[i][0], centroids_tall[i][1], "b*")
-    ax["points"].plot(selected_point[0],selected_point[1], "bo", markersize=8)
-    ax["points"].plot(selected_point[0],selected_point[1], "r+", markersize=8)
+    ax["points"].plot(opt_point[0], opt_point[1], "bo", markersize=8)
+    ax["points"].plot(opt_point[0],opt_point[1], "r+", markersize=8)
     ax["points"].set_title("Selected Points (Blue = Tall Outliers)")
     ax["viable regions"].imshow(viable_leaf_regions)
     ax["viable regions"].set_title(f"Viable Leaf Regions (blend: {ALPHA})")
@@ -207,6 +239,8 @@ def main(data_num: str, viz, output_dir):
 
     # 
     #TODO: Create approach vector for the selected grasping point 
+
+
 
 if __name__ == "__main__":
     main()

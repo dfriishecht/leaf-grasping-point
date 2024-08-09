@@ -66,6 +66,7 @@ def apply_depth_mask(pointcloud_path, mask_path, image_path, plot=False):
 
     # Pull depth data from point cloud
     depth_points = np.concatenate((np.asarray(pcd_load.points), fill), axis=0)
+    print(f"point shape: {depth_points.shape}")
     depth = depth_points[:, 2]
     depth = np.reshape(depth, (1080, 1440, 1))
 
@@ -117,7 +118,7 @@ def apply_depth_mask(pointcloud_path, mask_path, image_path, plot=False):
         ax["crop"].set_title("Cropped Image")
         plt.show()
 
-    return masked_points
+    return masked_points, depth_points
 
 
 def extract_pcd(masked_points):

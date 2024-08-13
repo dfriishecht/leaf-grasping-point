@@ -26,6 +26,9 @@ def main(data_num: str, viz, output_dir):
     pcd_path = "data/pointclouds/"+f"{data_num}"+".pcd"
     mask_path = "data/images/aggrigated_masks"+f"{data_num}"+".png"
     image_path = "data/images/left_rect"+f"{data_num}"+".png"
+    pcd_path = f"{HOME_DIR}/SDF_OUT/temp/139.pcd"
+    mask_path = f"{HOME_DIR}/SDF_OUT/temp/aggrigated_masks139.png"
+    image_path = f"{HOME_DIR}/SDF_OUT/temp/left_rect139.png"
     leafs, depth = pcdh.apply_depth_mask(pcd_path, mask_path, image_path, plot=False)
     mask = mh.clean_mask(leafs)
     leafs[:, :, 3] = mask
@@ -160,9 +163,13 @@ def main(data_num: str, viz, output_dir):
     #################################################################
 
 
-    max_leaf = 20000
+    max_leaf = None
+    min_distance = float('inf')
+
+
     for idx, sol in enumerate(paretoset_sols):
-        if sol[1] < max_leaf:
+        if sol[1] < min_distance:
+            min_distance = sol[1]
             max_leaf = idx
 
     opt_point = centroids[opt_leaves[max_leaf]]

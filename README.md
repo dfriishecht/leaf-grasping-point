@@ -51,3 +51,4 @@ Usage: collect_results.py [OPTIONS]
 Options;
     --input_directory STRING     Folder path for input data. Don't include the home directory path
     --output_directory STRING    Folder path for saving results. Don't include the home directory path
+```

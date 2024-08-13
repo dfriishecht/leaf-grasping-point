@@ -21,6 +21,14 @@ import modules.plant_pcd_helpers as pcdh
 @click.option('--viz', type=bool, default=False, help="Toggle for visualizing script outputs")
 @click.option('--output_dir', type=str, default='data_output', help='Directory to save data')
 def main(data_num: str, viz, output_dir):
+    """
+    Finds the grasping and approach point on a leaf.
+
+    Args:
+        data_num (str): String for indicating which set of data to use.
+        viz (bool): Toggle for visualizing the selected leaf.
+        output_dir: Folder to save outputs.
+    """
     tot_t = time.time()
     # Combine mask and depth data together to segment out leaves
     pcd_path = "data/pointclouds/"+f"{data_num}"+".pcd"
@@ -235,17 +243,6 @@ def main(data_num: str, viz, output_dir):
     fig.savefig(f"{HOME_DIR}/{output_dir}/viz{data_num}.png")
     if viz:
         plt.show()
-
-
-
-    #TODO: Select single leaf from selection of leaves
-        # Option 1: Choose leaf point with the greatest maxima -> Done
-        # Option 2: Evaluate this maxima as a score alongside height of the point
-
-   
-
-    # 
-    #TODO: Create approach vector for the selected grasping point 
 
 
 

@@ -37,7 +37,7 @@ def main(data_num, viz, output_dir):
     pcd_path = f"{HOME_DIR}/SDF_OUT/temp/{data_num}.pcd"
     mask_path = f"{HOME_DIR}/SDF_OUT/temp/aggrigated_masks{data_num}.png"
     image_path = f"{HOME_DIR}/SDF_OUT/temp/left_rect{data_num}.png"
-    leafs = pcdh.apply_depth_mask(pcd_path, mask_path, image_path, plot=False)
+    leafs, depth_ = pcdh.apply_depth_mask(pcd_path, mask_path, image_path, plot=False)
     mask = mh.clean_mask(leafs)
     leafs[:, :, 3] = mask
     ############################################################
@@ -64,11 +64,17 @@ def main(data_num, viz, output_dir):
     processed_pcd = o3d.geometry.PointCloud()
     processed_pcd.points = o3d.utility.Vector3dVector(leafs_)
     cl, id = processed_pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
-    o3d.io.write_point_cloud(f"{HOME_DIR}/{output_dir}/cleaned{data_num+71}.pcd", cl, format='auto')
+    o3d.io.write_point_cloud(f"{HOME_DIR}/{output_dir}/cleaned{data_num}.pcd", cl, format='auto')
     pcdh.compute_normals(processed_pcd)
     sqrt_dist = np.sum((processed_pcd.normals[999]) ** 2, axis=0)
     dist = np.sqrt(sqrt_dist)
     normal_orientation = abs(np.asarray(processed_pcd.normals)[:, 2])
+
+    normal_corrected = np.asarray(processed_pcd.normals)
+    for normal in normal_corrected:
+        if normal[2] < 0:
+            normal *= -1
+            
     orientation_color = np.zeros((len(normal_orientation), 3))
     orientation_color[:, 0] = normal_orientation
     orientation_color[:, 1:] = 0
@@ -78,13 +84,16 @@ def main(data_num, viz, output_dir):
 
     # Estimate leaf flatness based on normal vectors
     leaf_flatness = np.zeros((1555200, 1))
+    leaf_normals = np.zeros((1555200, 3))
     j = 0
     for i, _ in enumerate(inverse_index[0]):
         current_index = inverse_index[0][i]
         leaf_flatness[current_index, 0] = normal_orientation[j]
+        leaf_normals[current_index, :] = normal_corrected[j, :]
         j += 1
 
     leaf_flatness = np.reshape(leaf_flatness, (1080, 1440, 1))
+    leaf_normals = np.reshape(leaf_normals, (1080, 1440, 3))
     leafs = np.concatenate((leafs, leaf_flatness), axis=2)
     #############################################################
 
@@ -161,6 +170,42 @@ def main(data_num, viz, output_dir):
         opt_leaves_tall = np.where(res_tall == True)[0]
     #################################################################
 
+    max_leaf = None
+    min_distance = float('inf')
+
+
+    for idx, sol in enumerate(paretoset_sols):
+        if sol[1] < min_distance:
+            min_distance = sol[1]
+            max_leaf = idx
+            
+    opt_point = centroids[opt_leaves[max_leaf]]
+
+    real_grasp_coord = leafs[opt_point[1], opt_point[0], 0:3]
+    real_grasp_coord = np.round(real_grasp_coord, 4)
+    grasp_normal = np.round(leaf_normals[opt_point[1], opt_point[0], :], 4)
+    
+    SDF_max = np.unravel_index(SDF.argmax(), SDF.shape)
+
+    print(SDF_max)
+    print(opt_point)
+    x_dist = SDF_max[1] - opt_point[0]
+    y_dist = SDF_max[0] - opt_point[1]
+
+    tot_dist = np.sqrt((x_dist**2)+(y_dist**2))
+
+    x_dist /= tot_dist * .005
+    y_dist /= tot_dist * .005
+    target_vec = (int(x_dist+opt_point[0]), int(y_dist+opt_point[1]))
+    print(target_vec)
+
+    depth = np.reshape(depth_, (1080, 1440, 3))
+    real_target_vec = depth[target_vec[1], target_vec[0], :]
+    real_target_vec[2] = real_grasp_coord[2]
+    real_target_vec = np.round(real_target_vec, 4)
+    
+    print(f"Normal Vector: {grasp_normal} \n Grasp Point: {real_grasp_coord} \n Approach: {real_target_vec}")
+
     print(f"Total runtime: {time.time()-tot_t:.3f} s")
 
     # Optional toggle for visualizing processed leaves
@@ -168,23 +213,26 @@ def main(data_num, viz, output_dir):
             ['viable regions', 'sdf', 'points']
         ], figsize=(15,10))
     ax['points'].imshow(Image.open(image_path))
-    for i in opt_leaves:
+    x1, y1 = [opt_point[0], opt_point[1]]
+    x2, y2 = [SDF_max[1], SDF_max[0]]
+    ax["points"].axline((x1, y1), (x2, y2), marker='o')
+    ax["points"].plot(target_vec[0], target_vec[1], marker='*', markersize=12)
+    for i in opt_leaves:    
         ax['points'].plot(centroids[i][0], centroids[i][1], "r*")
     if tall_presence:
         for i in opt_leaves_tall:
             ax["points"].plot(centroids_tall[i][0], centroids_tall[i][1], "b*")
-
+    ax["points"].plot(opt_point[0], opt_point[1], "bo", markersize=8)
+    ax["points"].plot(opt_point[0],opt_point[1], "r+", markersize=8)
     ax["points"].set_title("Selected Points (Blue = Tall Outliers)")
     ax["viable regions"].imshow(viable_leaf_regions)
     ax["viable regions"].set_title(f"Viable Leaf Regions (blend: {ALPHA})")
     ax["sdf"].imshow(SDF)
     ax["sdf"].set_title("SDF")
-    fig.savefig(f"{HOME_DIR}/{output_dir}/viz{data_num+71}.png")
-    np.save(f"{HOME_DIR}/{output_dir}/centroids{data_num+71}.png", opt_leaves)
-    if tall_presence:
-        np.save(f"{HOME_DIR}/{output_dir}/tall_centroids{data_num+71}.png", opt_leaves_tall)
+    fig.savefig(f"{HOME_DIR}/{output_dir}/viz{data_num}.png")
     if viz:
         plt.show()
+
 
 def collect_data(args):
     output_directory = Path(args.output_directory)

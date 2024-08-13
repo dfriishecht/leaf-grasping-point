@@ -21,22 +21,22 @@ import modules.plant_pcd_helpers as pcdh
 
 HOME_DIR = os.path.expanduser('~')
 
-def max_data_count():
-    DIR = 'SDF_OUT/temp'
-    img_count = len([name for name in os.listdir(HOME_DIR+'/'+DIR) 
-               if os.path.isfile(os.path.join(HOME_DIR+'/'+DIR, name))])
+def max_data_count(input_dir):
+    DIR = f"{HOME_DIR}/{input_dir}"
+    img_count = len([name for name in os.listdir(DIR) 
+               if os.path.isfile(os.path.join(DIR, name))])
     img_count /= 8
     img_count = int(img_count)
     print(f"Total datasets to process: {img_count}")
     return img_count
 
 
-def main(data_num, viz, output_dir):
+def main(data_num, viz, output_dir, input_dir):
     tot_t = time.time()
     # Combine mask and depth data together to segment out leaves
-    pcd_path = f"{HOME_DIR}/SDF_OUT/temp/{data_num}.pcd"
-    mask_path = f"{HOME_DIR}/SDF_OUT/temp/aggrigated_masks{data_num}.png"
-    image_path = f"{HOME_DIR}/SDF_OUT/temp/left_rect{data_num}.png"
+    pcd_path = f"{HOME_DIR}/{input_dir}/{data_num}.pcd"
+    mask_path = f"{HOME_DIR}/{input_dir}/aggrigated_masks{data_num}.png"
+    image_path = f"{HOME_DIR}/{input_dir}/left_rect{data_num}.png"
     leafs, depth_ = pcdh.apply_depth_mask(pcd_path, mask_path, image_path, plot=False)
     mask = mh.clean_mask(leafs)
     leafs[:, :, 3] = mask
@@ -237,13 +237,15 @@ def main(data_num, viz, output_dir):
 def collect_data(args):
     output_directory = Path(args.output_directory)
     output_directory.mkdir(exist_ok=True)
-    img_count = max_data_count()
+    input_directory = Path(args.input_directory)
+    img_count = max_data_count(input_dir=input_directory)
     for data_num in tqdm(range(0, img_count)):
-        main(data_num, viz=False, output_dir=output_directory)
+        main(data_num, viz=False, output_dir=output_directory, input_dir=input_directory)
     
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--output_directory', help='directory to save output', default='data_output')
+    parser.add_argument('--input_directory', help='directory to pull inputs', default=f'SDF_OUT/temp')
     args = parser.parse_args()
     collect_data(args)
